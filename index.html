@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Adaptive Dino Runner</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-overlay" class="visible">
+      <button id="start-button" class="primary">Start Run</button>
+    </div>
+    <div id="reflection-panel" class="hidden">
+      <section class="panel">
+        <p class="label">Game Over</p>
+        <p class="score" id="final-score">0</p>
+        <p class="insight" id="insight-text"></p>
+        <button id="restart-button" class="primary">Restart</button>
+      </section>
+    </div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
