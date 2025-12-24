@@ -1,6 +1,7 @@
 (() => {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
+  let playerColor = localStorage.getItem("adaptiveDinoColor") || "#1d1f1c";
   const startButton = document.getElementById("start-button");
   const restartButton = document.getElementById("restart-button");
   const uiOverlay = document.getElementById("ui-overlay");
@@ -23,8 +24,31 @@
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-  // Stores rolling averages for behavior tracking and exposes methods for updating them.
-  // Behavior tracking module: captures jump timing, risk, and reaction patterns each run to build rolling averages.
+  function loadBehavior() {
+    const defaults = {
+      earlyJump: 0.5,
+      lastSecond: 0.2,
+      safeBias: 0.3,
+      consistency: 0.5,
+      reaction: 280,
+      adaptability: 0.4,
+      highScoreChase: 0.2,
+      totalRuns: 0,
+      highScore: 0,
+      highScoreStreak: 0,
+    };
+    try {
+      const raw = localStorage.getItem(BEHAVIOR_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaults, ...parsed };
+      }
+    } catch (err) {
+      console.warn("Unable to load behavior stats", err);
+    }
+    return defaults;
+  }
+
   const BehaviorTracker = {
     store: loadBehavior(),
     metrics: null,
@@ -74,8 +98,10 @@
       const earlyJumpScore = clamp((averageLead - 60) / 120, 0, 1);
       const lastSecondRate = m.lastSecondJumps / jumpCount;
       const safeBias = m.duckCount / actionTotal;
-      const consistency = BehaviorTracker.calculateConsistency(m.actions);
-      const reactionAverage = m.reactionCount ? m.reactionTotal / m.reactionCount : 320;
+      const consistency = this.calculateConsistency(m.actions);
+      const reactionAverage = m.reactionCount
+        ? m.reactionTotal / m.reactionCount
+        : 320;
       const adaptability = clamp((320 - reactionAverage) / 260, 0, 1);
       const highScoreChase = m.highScoreAggression / jumpCount;
 
@@ -106,11 +132,9 @@
       return matches / (actions.length - 1);
     },
 
-    // Rolling averages keep adaptation smooth by blending fresh data with historical behavior.
     updateStore(summary, isNewHighScore) {
       const prevRuns = this.store.totalRuns;
       const nextRuns = prevRuns + 1;
-
       const blend = (oldValue, newValue) =>
         prevRuns ? (oldValue * prevRuns + newValue) / nextRuns : newValue;
 
@@ -118,15 +142,16 @@
       this.store.lastSecond = blend(this.store.lastSecond, summary.lastSecond);
       this.store.safeBias = blend(this.store.safeBias, summary.safeBias);
       this.store.consistency = blend(this.store.consistency, summary.consistency);
-      // Store reaction as a rolling average of reaction time (ms).
       this.store.reaction =
         blend(this.store.reaction, summary.reaction) || summary.reaction;
-      this.store.adaptability = blend(this.store.adaptability, summary.adaptability);
+      this.store.adaptability = blend(
+        this.store.adaptability,
+        summary.adaptability
+      );
       this.store.highScoreChase = blend(
         this.store.highScoreChase,
         summary.highScoreChase
       );
-
       this.store.totalRuns = nextRuns;
 
       if (isNewHighScore) {
@@ -145,10 +170,8 @@
       }
     },
 
-    // Insight generation module: chooses a neutral reflection line that matches what we just observed.
     getInsight(summary) {
       const candidates = [];
-
       if (summary.earlyJump > 0.65) {
         const successRate = Math.max(
           0,
@@ -158,71 +181,33 @@
           `You jump early under uncertainty. It works ~${successRate}% of the time.`
         );
       }
-
       if (summary.safeBias > 0.65) {
         candidates.push(
           "You tend to play it safe, even when a precise risk could pay off."
         );
       }
-
       if (summary.highScoreChase > 0.35 && this.store.highScoreStreak >= 2) {
         candidates.push(
           "After long streaks, accuracy drops—a subtle reminder to breathe."
         );
       }
-
       if (summary.reaction < 230) {
         candidates.push(
           "Your reactions stay sharp, especially when new patterns emerge."
         );
       }
-
       if (summary.consistency > 0.7) {
         candidates.push("Consistency is your anchor, and it keeps you alive.");
       }
-
       if (!candidates.length) {
         candidates.push("You kept a steady rhythm this run, nice and calm.");
       }
-
       return candidates[Math.floor(Math.random() * candidates.length)];
     },
   };
 
-  function loadBehavior() {
-    const defaults = {
-      earlyJump: 0.5,
-      lastSecond: 0.2,
-      safeBias: 0.3,
-      consistency: 0.5,
-      reaction: 280,
-      adaptability: 0.4,
-      highScoreChase: 0.2,
-      totalRuns: 0,
-      highScore: 0,
-      highScoreStreak: 0,
-    };
-    try {
-      const raw = localStorage.getItem(BEHAVIOR_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const merged = { ...defaults, ...parsed };
-        merged.highScore = merged.highScore || 0;
-        merged.highScoreStreak = merged.highScoreStreak || 0;
-        return merged;
-      }
-    } catch (err) {
-      console.warn("Unable to load stored behavior samples", err);
-    }
-    return defaults;
-  }
-
-  let adaptiveSettings = deriveAdaptiveSettings();
-
-  // Adaptive difficulty module: behavior averages gently adjust spawn patterns, fake obstacles, and pacing.
   function deriveAdaptiveSettings() {
     const stored = BehaviorTracker.store;
-    // Adjust behavior modifiers to stay subtle and smooth.
     return {
       fakeChance: clamp(stored.earlyJump * 0.6, 0.05, 0.7),
       wideBoost: clamp(stored.safeBias * 0.6, 0, 0.8),
@@ -254,6 +239,7 @@
   };
 
   const obstacles = [];
+  let adaptiveSettings = deriveAdaptiveSettings();
 
   function resetGameState() {
     state.speed = BASE_SPEED;
@@ -261,6 +247,7 @@
     state.spawnAccumulator = 0;
     state.spawnInterval = 1700;
     state.lastTime = 0;
+    state.shakeTimer = 0;
     obstacles.length = 0;
     player.y = canvas.height - GROUND_OFFSET - player.height;
     player.vy = 0;
@@ -290,33 +277,12 @@
     insightEl.textContent = BehaviorTracker.getInsight(summary);
     reflectionPanel.classList.remove("hidden");
     reflectionPanel.classList.add("visible");
-    state.shakeTimer = 120;
+    state.shakeTimer = 90;
   }
 
-  function updatePlayer(dt) {
-    const groundY = canvas.height - GROUND_OFFSET;
-    player.ducking = inputState.duck || player.duckTimer > 0;
-    if (player.duckTimer > 0) {
-      player.duckTimer -= dt;
-    }
-
-    const targetHeight = player.ducking ? player.height * 0.6 : player.height;
-    const bottom = player.y + player.displayHeight;
-    if (player.displayHeight !== targetHeight) {
-      player.displayHeight = targetHeight;
-      player.y = bottom - player.displayHeight;
-    }
-
-    player.y += player.vy;
-    player.vy += GRAVITY * dt * 0.05;
-    if (player.y + player.displayHeight >= groundY) {
-      player.y = groundY - player.displayHeight;
-      player.vy = 0;
-      player.falling = false;
-    } else {
-      player.falling = true;
-    }
-  }
+  const inputState = {
+    duck: false,
+  };
 
   function attemptJump() {
     if (!state.running) return;
@@ -341,61 +307,44 @@
     BehaviorTracker.logDuck();
   }
 
-  const inputState = {
-    duck: false,
-  };
-
-  window.addEventListener("keydown", (event) => {
-    if (event.repeat) return;
-    if (event.code === "Space" || event.code === "ArrowUp") {
-      event.preventDefault();
-      attemptJump();
+  function updatePlayer(dt) {
+    const groundY = canvas.height - GROUND_OFFSET;
+    player.ducking = inputState.duck || player.duckTimer > 0;
+    if (player.duckTimer > 0) {
+      player.duckTimer -= dt;
     }
-    if (event.code === "ArrowDown") {
-      event.preventDefault();
-      inputState.duck = true;
+    const targetHeight = player.ducking ? player.height * 0.6 : player.height;
+    const bottom = player.y + player.displayHeight;
+    if (player.displayHeight !== targetHeight) {
+      player.displayHeight = targetHeight;
+      player.y = bottom - player.displayHeight;
     }
-  });
-
-  window.addEventListener("keyup", (event) => {
-    if (event.code === "ArrowDown") {
-      inputState.duck = false;
-    }
-  });
-
-  let touchStartY = null;
-  canvas.addEventListener("touchstart", (event) => {
-    if (!state.running) return;
-    const touch = event.touches[0];
-    touchStartY = touch.clientY;
-    event.preventDefault();
-  });
-
-  canvas.addEventListener("touchend", (event) => {
-    if (!state.running || touchStartY === null) return;
-    const touch = event.changedTouches[0];
-    const deltaY = touchStartY - touch.clientY;
-    if (deltaY < -30) {
-      attemptDuck();
+    player.y += player.vy;
+    player.vy += GRAVITY * dt * 0.05;
+    if (player.y + player.displayHeight >= groundY) {
+      player.y = groundY - player.displayHeight;
+      player.vy = 0;
+      player.falling = false;
     } else {
-      attemptJump();
+      player.falling = true;
     }
-    touchStartY = null;
-    event.preventDefault();
-  });
+  }
 
   function spawnObstacle() {
-    // Obstacle generation: fuse base variety with behavior-driven modifiers (fake obstacles for early jumpers, larger widths for safe play).
     const isAir = Math.random() < 0.35;
     const baseWidth = 24 + Math.random() * 26;
     const baseHeight = isAir ? 28 : 32;
     const width = baseWidth + adaptiveSettings.wideBoost * 60;
     const height = baseHeight + (isAir ? 0 : adaptiveSettings.wideBoost * 12);
     const x = canvas.width + width + Math.random() * 40;
-
     let y;
     if (isAir) {
-      y = canvas.height - GROUND_OFFSET - player.displayHeight - 60 - Math.random() * 40;
+      y =
+        canvas.height -
+        GROUND_OFFSET -
+        player.displayHeight -
+        60 -
+        Math.random() * 40;
     } else {
       y = canvas.height - GROUND_OFFSET - height;
     }
@@ -419,7 +368,7 @@
     obstacles.push(obstacle);
   }
 
-  function updateObstacles(dt) {
+  function updateObstacles() {
     for (let i = obstacles.length - 1; i >= 0; i -= 1) {
       const obstacle = obstacles[i];
       obstacle.x -= state.speed;
@@ -444,7 +393,6 @@
         width: obstacle.width,
         height: obstacle.height,
       };
-
       if (rectIntersect(playerRect, obstacleRect)) {
         endRun();
         return;
@@ -461,35 +409,39 @@
     );
   }
 
+  function updateDifficulty(dt) {
+    state.speed += dt * 0.00006 * adaptiveSettings.speedModifier;
+    state.speed = clamp(state.speed, BASE_SPEED, MAX_SPEED);
+    const baseInterval = 1700;
+    const density = adaptiveSettings.densityMultiplier;
+    state.spawnAccumulator += dt * density;
+    state.spawnInterval =
+      Math.max(720, baseInterval / density + adaptiveSettings.wideBoost * 120) -
+      state.speed * 6;
+    if (state.spawnAccumulator > state.spawnInterval) {
+      spawnObstacle();
+      state.spawnAccumulator = 0;
+    }
+  }
+
   function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-
     if (state.shakeTimer > 0) {
       const shake = Math.random() * 2.5;
-      ctx.translate(shake, shake * -1);
+      ctx.translate(shake, -shake);
       state.shakeTimer -= 1;
     }
-
-    ctx.fillStyle = "#1d1f1c";
     const groundY = canvas.height - GROUND_OFFSET;
-    ctx.fillRect(0, groundY, canvas.width, 6);
-
     ctx.fillStyle = "#1d1f1c";
-    ctx.fillRect(
-      player.x,
-      player.y,
-      player.width,
-      player.displayHeight
-    );
-
+    ctx.fillRect(0, groundY, canvas.width, 6);
+    ctx.fillStyle = playerColor;
+    ctx.fillRect(player.x, player.y, player.width, player.displayHeight);
     obstacles.forEach((obstacle) => {
       ctx.fillStyle = obstacle.fake ? "#5c5b58" : "#1d1f1c";
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     });
-
     ctx.restore();
-
     ctx.fillStyle = "#1d1f1c";
     ctx.font = "600 14px 'Segoe UI', system-ui";
     ctx.fillText(`Score ${Math.floor(state.score)}`, 24, 32);
@@ -500,24 +452,6 @@
     );
   }
 
-  // Update pacing and obstacle cadence, tweaking speed growth and spawn rhythm based on tracked behavior.
-  function updateDifficulty(dt) {
-    state.speed += dt * 0.00006 * adaptiveSettings.speedModifier;
-    state.speed = clamp(state.speed, BASE_SPEED, MAX_SPEED);
-
-    const baseInterval = 1700;
-    const density = adaptiveSettings.densityMultiplier;
-    state.spawnAccumulator += dt * density;
-    state.spawnInterval =
-      Math.max(720, baseInterval / density + adaptiveSettings.wideBoost * 120) -
-      state.speed * 6;
-
-    if (state.spawnAccumulator > state.spawnInterval) {
-      spawnObstacle();
-      state.spawnAccumulator = 0;
-    }
-  }
-
   function step(timestamp) {
     if (!state.running) return;
     if (!state.lastTime) state.lastTime = timestamp;
@@ -525,7 +459,7 @@
     state.lastTime = timestamp;
     updateDifficulty(dt);
     updatePlayer(dt);
-    updateObstacles(dt);
+    updateObstacles();
     applyCollision();
     drawScene();
     if (state.running) {
@@ -534,13 +468,71 @@
     }
   }
 
-  startButton.addEventListener("click", startRun);
-  restartButton.addEventListener("click", startRun);
+  window.addEventListener("keydown", (event) => {
+    if (event.repeat) return;
+    if (event.code === "Space" || event.code === "ArrowUp") {
+      event.preventDefault();
+      attemptJump();
+    }
+    if (event.code === "ArrowDown") {
+      event.preventDefault();
+      inputState.duck = true;
+    }
+  });
 
-  reflectionPanel.classList.add("hidden");
-  uiOverlay.classList.add("visible");
+  window.addEventListener("keyup", (event) => {
+    if (event.code === "ArrowDown") {
+      inputState.duck = false;
+    }
+  });
 
-  // Expose behavior metrics in case manual inspection or future toggles are added.
+  let touchStartY = null;
+  canvas.addEventListener("touchstart", (event) => {
+    if (!state.running) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    touchStartY = touch.clientY;
+    event.preventDefault();
+  });
+
+  canvas.addEventListener("touchend", (event) => {
+    if (!state.running || touchStartY === null) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const deltaY = touchStartY - touch.clientY;
+    if (deltaY < -30) {
+      attemptDuck();
+    } else {
+      attemptJump();
+    }
+    touchStartY = null;
+    event.preventDefault();
+  });
+
+  const colorButtons = document.querySelectorAll(".color-btn");
+  const applyColorSelection = (color) => {
+    playerColor = color;
+    document.documentElement.style.setProperty("--player-color", color);
+    colorButtons.forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.color === color)
+    );
+  };
+
+  colorButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const selected = btn.dataset.color || "#1d1f1c";
+      applyColorSelection(selected);
+      localStorage.setItem("adaptiveDinoColor", selected);
+    });
+  });
+
+  applyColorSelection(playerColor);
+
+  if (startButton) startButton.addEventListener("click", startRun);
+  if (restartButton) restartButton.addEventListener("click", startRun);
+  if (reflectionPanel) reflectionPanel.classList.add("hidden");
+  if (uiOverlay) uiOverlay.classList.add("visible");
+
   window.adaptiveDino = {
     behavior: BehaviorTracker.store,
   };
