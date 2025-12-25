@@ -211,9 +211,25 @@ button.primary {
 }
 
 @media (max-width: 600px) {
-  button.primary {
-    width: 80%;
+  /* keep primary button reasonably wide but allow controlled centering inside .home-buttons */
+  .home-buttons button.primary {
+    width: 92%;
+    max-width: 340px;
   }
+}
+
+.home-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+@media (max-width: 420px) {
+  .home-buttons { flex-direction: column; }
+  .home-buttons button { width: 92%; max-width: 320px; }
 }
 
 #game-shell { position: relative; }
@@ -260,3 +276,47 @@ button.primary {
   background: rgb(166, 162, 162);
   color: white;
 }
+
+/* Small secondary button used for sign-in / sign-out on home and reflection panels */
+.small-btn {
+  background: transparent;
+  border: 1px solid rgba(29,31,28,0.12);
+  color: var(--fg);
+  padding: 8px 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.small-btn:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+/* Tighter, mobile-first layout tweaks */
+.home-container { padding: 1.25rem; align-items: center; }
+.title-section h1 { font-size: 1.6rem; text-align: center; }
+
+@media (max-width: 420px) {
+  .title-section h1 { font-size: 1.4rem; }
+  .color-btn { width: 32px; height: 32px; }
+  .small-btn { padding: 7px 10px; font-size: 0.95rem; }
+  button.primary { padding: 0.85rem 1.6rem; }
+}
+
+/* Reflection panel home icon (top-left) */
+.panel { position: relative; }
+.panel .home-icon {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.panel .home-icon svg { width: 18px; height: 18px; }
