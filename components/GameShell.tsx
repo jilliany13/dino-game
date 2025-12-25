@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { initGame } from '../lib/game';
 
-export default function GameShell(): JSX.Element {
+export default function GameShell() {
   useEffect(() => {
     const cleanup = initGame();
     return () => cleanup();
