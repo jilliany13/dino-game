@@ -2,8 +2,13 @@
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
   let playerColor = localStorage.getItem("adaptiveDinoColor") || "#1d1f1c";
+
+  // Buttons
   const startButton = document.getElementById("start-button");
   const restartButton = document.getElementById("restart-button");
+  const pauseButton = document.getElementById("pause-button");
+  const homeButton = document.getElementById("home-button");
+
   const uiOverlay = document.getElementById("ui-overlay");
   const reflectionPanel = document.getElementById("reflection-panel");
   const finalScoreEl = document.getElementById("final-score");
@@ -12,7 +17,9 @@
   const GROUND_OFFSET = 70;
   const BASE_SPEED = 4;
   const MAX_SPEED = 14;
-  const GRAVITY = 0.3;
+  const GRAVITY = 0.45;
+  const JUMP_FORCE = -10.2;
+  const HUD_Y = 48;
   const BEHAVIOR_KEY = "adaptive-dino-behavior";
 
   const canvasSize = () => {
@@ -230,6 +237,7 @@
 
   const state = {
     running: false,
+    paused: false,
     lastTime: 0,
     speed: BASE_SPEED,
     score: 0,
@@ -261,12 +269,14 @@
     resetGameState();
     adaptiveSettings = deriveAdaptiveSettings();
     BehaviorTracker.startRun();
+    state.paused = false;
     state.running = true;
     reflectionPanel.classList.remove("visible");
     reflectionPanel.classList.add("hidden");
     uiOverlay.classList.remove("visible");
     uiOverlay.classList.add("hidden");
     requestAnimationFrame(step);
+    updatePauseButtonState();
   }
 
   function endRun() {
@@ -278,7 +288,23 @@
     reflectionPanel.classList.remove("hidden");
     reflectionPanel.classList.add("visible");
     state.shakeTimer = 90;
+    state.paused = false;
+    updatePauseButtonState();
   }
+
+  function goHome() {
+    // stop the game
+    state.running = false;
+
+    // hide game-over panel
+    reflectionPanel.classList.remove("visible");
+    reflectionPanel.classList.add("hidden");
+
+    // show start screen
+    uiOverlay.classList.remove("hidden");
+    uiOverlay.classList.add("visible");
+  }
+
 
   const inputState = {
     duck: false,
@@ -287,7 +313,7 @@
   function attemptJump() {
     if (!state.running) return;
     if (player.falling || player.ducking) return;
-    player.vy = -8.5;
+    player.vy = JUMP_FORCE;
     player.falling = true;
     const leadObstacle = obstacles.find(
       (obs) => obs.x > player.x + player.width + 10
@@ -320,7 +346,7 @@
       player.y = bottom - player.displayHeight;
     }
     player.y += player.vy;
-    player.vy += GRAVITY * dt * 0.05;
+    player.vy += GRAVITY * dt * 0.08;
     if (player.y + player.displayHeight >= groundY) {
       player.y = groundY - player.displayHeight;
       player.vy = 0;
@@ -368,10 +394,13 @@
     obstacles.push(obstacle);
   }
 
-  function updateObstacles() {
+  const FRAME_MS = 16.67;
+
+  function updateObstacles(dt) {
     for (let i = obstacles.length - 1; i >= 0; i -= 1) {
       const obstacle = obstacles[i];
-      obstacle.x -= state.speed;
+      const scaledSpeed = state.speed * (dt / FRAME_MS);
+      obstacle.x -= scaledSpeed;
       if (obstacle.x + obstacle.width < 0) {
         obstacles.splice(i, 1);
       }
@@ -444,11 +473,11 @@
     ctx.restore();
     ctx.fillStyle = "#1d1f1c";
     ctx.font = "600 14px 'Segoe UI', system-ui";
-    ctx.fillText(`Score ${Math.floor(state.score)}`, 24, 32);
+    ctx.fillText(`Score ${Math.floor(state.score)}`, 24, HUD_Y);
     ctx.fillText(
       `High ${BehaviorTracker.store.highScore || 0}`,
       canvas.width - 120,
-      32
+      HUD_Y
     );
   }
 
@@ -457,15 +486,15 @@
     if (!state.lastTime) state.lastTime = timestamp;
     const dt = Math.min(timestamp - state.lastTime, 40);
     state.lastTime = timestamp;
-    updateDifficulty(dt);
-    updatePlayer(dt);
-    updateObstacles();
-    applyCollision();
-    drawScene();
-    if (state.running) {
+    if (!state.paused) {
+      updateDifficulty(dt);
+      updatePlayer(dt);
+      updateObstacles(dt);
+      applyCollision();
       state.score += dt * 0.027;
-      requestAnimationFrame(step);
     }
+    drawScene();
+    requestAnimationFrame(step);
   }
 
   window.addEventListener("keydown", (event) => {
@@ -510,6 +539,23 @@
   });
 
   const colorButtons = document.querySelectorAll(".color-btn");
+  const updatePauseButtonState = () => {
+    if (!pauseButton) return;
+    if (!state.running) {
+      pauseButton.classList.add("hidden");
+      return;
+    }
+    pauseButton.classList.remove("hidden");
+    pauseButton.textContent = state.paused ? "Resume" : "Pause";
+  };
+
+  if (pauseButton) {
+    pauseButton.addEventListener("click", () => {
+      if (!state.running) return;
+      state.paused = !state.paused;
+      updatePauseButtonState();
+    });
+  }
   const applyColorSelection = (color) => {
     playerColor = color;
     document.documentElement.style.setProperty("--player-color", color);
@@ -528,10 +574,13 @@
 
   applyColorSelection(playerColor);
 
+  updatePauseButtonState();
+
   if (startButton) startButton.addEventListener("click", startRun);
   if (restartButton) restartButton.addEventListener("click", startRun);
   if (reflectionPanel) reflectionPanel.classList.add("hidden");
   if (uiOverlay) uiOverlay.classList.add("visible");
+  if (homeButton) homeButton.addEventListener("click", goHome);
 
   window.adaptiveDino = {
     behavior: BehaviorTracker.store,
