@@ -18,7 +18,7 @@
   const BASE_SPEED = 4;
   const MAX_SPEED = 14;
   const GRAVITY = 0.45;
-  const JUMP_FORCE = -10.2;
+  const JUMP_FORCE = -12.5;
   const HUD_Y = 48;
   const BEHAVIOR_KEY = "adaptive-dino-behavior";
 
@@ -180,12 +180,8 @@
     getInsight(summary) {
       const candidates = [];
       if (summary.earlyJump > 0.65) {
-        const successRate = Math.max(
-          0,
-          Math.round((1 - summary.lastSecond) * 100)
-        );
         candidates.push(
-          `You jump early under uncertainty. It works ~${successRate}% of the time.`
+          `You jump early under uncertainty.`
         );
       }
       if (summary.safeBias > 0.65) {
