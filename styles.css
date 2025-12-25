@@ -249,9 +249,12 @@ button.primary {
 
 #pause-button.pause-btn{
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 80px); /* was 52px -> push further */
-  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  top: calc(env(safe-area-inset-top, 0px) + 32px); /* above score */
+  right: calc(env(safe-area-inset-right, 0px) + 24px);
   z-index: 20;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 999px;
 }
 
 #home-button {

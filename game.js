@@ -23,7 +23,7 @@
   const MAX_SPEED = 14;
   const GRAVITY = 0.45;
   const JUMP_FORCE = -12.5;
-  const HUD_Y = 48;
+  const HUD_Y = 90;
   const BEHAVIOR_KEY = "adaptive-dino-behavior";
 
   const canvasSize = () => {
@@ -495,12 +495,13 @@
     ctx.restore();
     ctx.fillStyle = "#1d1f1c";
     ctx.font = "600 14px 'Segoe UI', system-ui";
+    ctx.textBaseline = "alphabetic"; // or "top" if you prefer
+
+    ctx.textAlign = "left";
     ctx.fillText(`Score ${Math.floor(state.score)}`, 24, HUD_Y);
-    ctx.fillText(
-      `High ${BehaviorTracker.store.highScore || 0}`,
-      VIEW_W - 120,
-      HUD_Y
-    );
+
+    ctx.textAlign = "right";
+    ctx.fillText(`High ${BehaviorTracker.store.highScore || 0}`, VIEW_W - 24, HUD_Y);
   }
 
   function step(timestamp) {
