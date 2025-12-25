@@ -1,6 +1,10 @@
 (() => {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
+  let DPR = 1;
+  let VIEW_W = 0;
+  let VIEW_H = 0;
+
   let playerColor = localStorage.getItem("adaptiveDinoColor") || "#1d1f1c";
 
   // Buttons
@@ -23,10 +27,32 @@
   const BEHAVIOR_KEY = "adaptive-dino-behavior";
 
   const canvasSize = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    DPR = window.devicePixelRatio || 1;
+
+    // Use the visual viewport on mobile (accounts for browser UI bars)
+    const vv = window.visualViewport;
+    const w = vv ? vv.width : window.innerWidth;
+    const h = vv ? vv.height : window.innerHeight;
+
+    // Set CSS size (what you see)
+    VIEW_W = Math.round(w);
+    VIEW_H = Math.round(h);
+    canvas.style.width = VIEW_W + "px";
+    canvas.style.height = VIEW_H + "px";
+
+    // Backing store size (sharp rendering)
+    canvas.width = Math.round(VIEW_W * DPR);
+    canvas.height = Math.round(VIEW_H * DPR);
+
+    // 1 unit = 1 CSS pixel
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   };
+
   window.addEventListener("resize", canvasSize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", canvasSize);
+    window.visualViewport.addEventListener("scroll", canvasSize);
+  }
   canvasSize();
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -253,7 +279,7 @@
     state.lastTime = 0;
     state.shakeTimer = 0;
     obstacles.length = 0;
-    player.y = canvas.height - GROUND_OFFSET - player.height;
+    player.y = VIEW_H - GROUND_OFFSET - player.height;
     player.vy = 0;
     player.ducking = false;
     player.displayHeight = player.height;
@@ -330,7 +356,7 @@
   }
 
   function updatePlayer(dt) {
-    const groundY = canvas.height - GROUND_OFFSET;
+    const groundY = VIEW_H - GROUND_OFFSET;
     player.ducking = inputState.duck || player.duckTimer > 0;
     if (player.duckTimer > 0) {
       player.duckTimer -= dt;
@@ -358,17 +384,17 @@
     const baseHeight = isAir ? 28 : 32;
     const width = baseWidth + adaptiveSettings.wideBoost * 60;
     const height = baseHeight + (isAir ? 0 : adaptiveSettings.wideBoost * 12);
-    const x = canvas.width + width + Math.random() * 40;
+    const x = VIEW_W + width + Math.random() * 40;
     let y;
     if (isAir) {
       y =
-        canvas.height -
+        VIEW_H -
         GROUND_OFFSET -
         player.displayHeight -
         60 -
         Math.random() * 40;
     } else {
-      y = canvas.height - GROUND_OFFSET - height;
+      y = VIEW_H - GROUND_OFFSET - height;
     }
 
     const obstacle = {
@@ -450,16 +476,16 @@
   }
 
   function drawScene() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     ctx.save();
     if (state.shakeTimer > 0) {
       const shake = Math.random() * 2.5;
       ctx.translate(shake, -shake);
       state.shakeTimer -= 1;
     }
-    const groundY = canvas.height - GROUND_OFFSET;
-    ctx.fillStyle = "#1d1f1c";
-    ctx.fillRect(0, groundY, canvas.width, 6);
+    const groundY = VIEW_H - GROUND_OFFSET;
+    ctx.fillStyle = "#040404ff";
+    ctx.fillRect(0, groundY, VIEW_W, 6);
     ctx.fillStyle = playerColor;
     ctx.fillRect(player.x, player.y, player.width, player.displayHeight);
     obstacles.forEach((obstacle) => {
@@ -472,7 +498,7 @@
     ctx.fillText(`Score ${Math.floor(state.score)}`, 24, HUD_Y);
     ctx.fillText(
       `High ${BehaviorTracker.store.highScore || 0}`,
-      canvas.width - 120,
+      VIEW_W - 120,
       HUD_Y
     );
   }
