@@ -280,10 +280,11 @@ button.primary {
 /* Small secondary button used for sign-in / sign-out on home and reflection panels */
 .small-btn {
   background: transparent;
-  border: 1px solid rgba(29,31,28,0.12);
+  border: 1px solid rgba(29,31,28,0.14);
   color: var(--fg);
-  padding: 8px 12px;
+  padding: 10px 14px;
   font-weight: 600;
+  font-size: 1rem;
   border-radius: 999px;
   cursor: pointer;
 }
@@ -320,3 +321,58 @@ button.primary {
   cursor: pointer;
 }
 .panel .home-icon svg { width: 18px; height: 18px; }
+
+/* Auth toggle button inside modal */
+.auth-toggle-btn {
+  background: transparent;
+  border: 1px solid rgba(29,31,28,0.14);
+  color: var(--fg);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  min-width: 120px;
+}
+.auth-toggle-btn:hover {
+  background: rgba(29,31,28,0.04);
+  transform: translateY(-1px);
+}
+.auth-toggle-btn:active { transform: translateY(1px); }
+
+@media (max-width: 420px) {
+  .auth-toggle-btn { width: 100%; max-width: 260px; min-width: 120px; }
+}
+
+/* Show long text by default, but switch to short label on small screens to prevent wrapping */
+.auth-toggle-btn .short { display: none; }
+.auth-toggle-btn .long { display: inline; }
+.auth-toggle-btn { white-space: nowrap; }
+
+@media (max-width: 420px) {
+  .auth-toggle-btn .short { display: inline; }
+  .auth-toggle-btn .long { display: none; }
+}
+
+/* Make auth modal buttons fill available width on small screens */
+@media (max-width: 420px) {
+  .auth-panel button.primary {
+    width: 100%;
+    max-width: 260px;
+  }
+  .auth-panel .auth-toggle-btn {
+    width: 100%;
+    max-width: 260px;
+  }
+  .auth-panel .auth-buttons {
+    flex-direction: column;
+  }
+}

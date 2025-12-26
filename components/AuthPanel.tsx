@@ -92,7 +92,7 @@ export default function AuthPanel({ onSuccess, onClose }: { onSuccess?: () => vo
   // Styled to match game's card vibe
   return (
     <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-      <div style={{ width: 'min(92vw,340px)', background: 'var(--panel)', padding: 18, borderRadius: 16, boxShadow: '0 18px 45px rgba(0,0,0,0.15)' }}>
+      <div className="auth-panel" style={{ width: 'min(92vw,340px)', background: 'var(--panel)', padding: 18, borderRadius: 16, boxShadow: '0 18px 45px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div>
             <h3 style={{ margin: 0 }}>Sign {isSignUp ? 'Up' : 'In'}</h3>
@@ -114,15 +114,27 @@ export default function AuthPanel({ onSuccess, onClose }: { onSuccess?: () => vo
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
               <div style={{ width: '100%', maxWidth: 260 }}>
-                <input aria-label="username" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }} />
+                <input aria-label="username" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} inputMode="text" autoCapitalize="off" spellCheck={false} autoComplete="username" maxLength={32} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 16, WebkitTextSizeAdjust: '100%' }} />
               </div>
               <div style={{ width: '100%', maxWidth: 260 }}>
-                <input aria-label="password" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }} />
+                <input aria-label="password" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoCapitalize="off" spellCheck={false} autoComplete={isSignUp ? 'new-password' : 'current-password'} maxLength={64} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 16, WebkitTextSizeAdjust: '100%' }} />
               </div>
               {error && <div style={{ color: 'red' }}>{error}</div>}
-              <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'center' }}>
+              <div className="auth-buttons" style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'center' }}>
                 <button type="submit" className="primary" disabled={loading}>{isSignUp ? 'Sign Up' : 'Sign In'}</button>
-                <button type="button" onClick={() => setIsSignUp((s) => !s)} style={{ background: 'transparent', border: '1px solid #ccc', padding: '10px 12px', borderRadius: 8 }}>{isSignUp ? 'Have an account? Sign In' : 'Create account'}</button>
+                <button type="button" onClick={() => setIsSignUp((s) => !s)} className="auth-toggle-btn">
+                  {isSignUp ? (
+                    <>
+                      <span className="short">Sign In</span>
+                      <span className="long">Have an account? Sign In</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="short">Sign Up</span>
+                      <span className="long">Create account</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </form>
