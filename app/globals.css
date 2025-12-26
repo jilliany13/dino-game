@@ -211,9 +211,25 @@ button.primary {
 }
 
 @media (max-width: 600px) {
-  button.primary {
-    width: 80%;
+  /* keep primary button reasonably wide but allow controlled centering inside .home-buttons */
+  .home-buttons button.primary {
+    width: 92%;
+    max-width: 340px;
   }
+}
+
+.home-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+@media (max-width: 420px) {
+  .home-buttons { flex-direction: column; }
+  .home-buttons button { width: 92%; max-width: 320px; }
 }
 
 #game-shell { position: relative; }
@@ -259,4 +275,104 @@ button.primary {
   margin-top: 1rem;
   background: rgb(166, 162, 162);
   color: white;
+}
+
+/* Small secondary button used for sign-in / sign-out on home and reflection panels */
+.small-btn {
+  background: transparent;
+  border: 1px solid rgba(29,31,28,0.14);
+  color: var(--fg);
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.small-btn:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+/* Tighter, mobile-first layout tweaks */
+.home-container { padding: 1.25rem; align-items: center; }
+.title-section h1 { font-size: 1.6rem; text-align: center; }
+
+@media (max-width: 420px) {
+  .title-section h1 { font-size: 1.4rem; }
+  .color-btn { width: 32px; height: 32px; }
+  .small-btn { padding: 7px 10px; font-size: 0.95rem; }
+  button.primary { padding: 0.85rem 1.6rem; }
+}
+
+/* Reflection panel home icon (top-left) */
+.panel { position: relative; }
+.panel .home-icon {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.panel .home-icon svg { width: 18px; height: 18px; }
+
+/* Auth toggle button inside modal */
+.auth-toggle-btn {
+  background: transparent;
+  border: 1px solid rgba(29,31,28,0.14);
+  color: var(--fg);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  min-width: 120px;
+}
+.auth-toggle-btn:hover {
+  background: rgba(29,31,28,0.04);
+  transform: translateY(-1px);
+}
+.auth-toggle-btn:active { transform: translateY(1px); }
+
+@media (max-width: 420px) {
+  .auth-toggle-btn { width: 100%; max-width: 260px; min-width: 120px; }
+}
+
+/* Show long text by default, but switch to short label on small screens to prevent wrapping */
+.auth-toggle-btn .short { display: none; }
+.auth-toggle-btn .long { display: inline; }
+.auth-toggle-btn { white-space: nowrap; }
+
+@media (max-width: 420px) {
+  .auth-toggle-btn .short { display: inline; }
+  .auth-toggle-btn .long { display: none; }
+}
+
+/* Make auth modal buttons fill available width on small screens */
+@media (max-width: 420px) {
+  .auth-panel button.primary {
+    width: 100%;
+    max-width: 260px;
+  }
+  .auth-panel .auth-toggle-btn {
+    width: 100%;
+    max-width: 260px;
+  }
+  .auth-panel .auth-buttons {
+    flex-direction: column;
+  }
 }
