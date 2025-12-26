@@ -342,6 +342,13 @@ export function initGame(): () => void {
   }
 
   const inputState = { duck: false };
+  const activeDuckTouches = new Set<number>();
+  const touchSideById = new Map<number, 'left' | 'right'>();
+
+  function determineTouchSide(touch: Touch, rect: DOMRect) {
+    const x = touch.clientX - rect.left;
+    return x < rect.width / 2 ? 'left' : 'right';
+  }
 
   function attemptJump() {
     if (!state.running) return;
@@ -522,25 +529,52 @@ export function initGame(): () => void {
     if (event.code === 'ArrowDown') inputState.duck = false;
   }
 
-  let touchStartY: number | null = null;
-  function onTouchStart(ev: TouchEvent) {
-    if (!state.running) return;
-    const touch = ev.touches[0];
-    if (!touch) return;
-    touchStartY = touch.clientY;
-    ev.preventDefault();
-  }
-  function onTouchEnd(ev: TouchEvent) {
-    if (!state.running || touchStartY === null) return;
-    const touch = ev.changedTouches[0];
-    if (!touch) return;
-    const deltaY = touchStartY - touch.clientY;
-    if (deltaY < -30) {
-      attemptDuck();
-    } else {
+  function handleTouchRelease(touch: Touch, rect: DOMRect, triggerJump: boolean) {
+    const id = touch.identifier;
+    const side = touchSideById.get(id) ?? determineTouchSide(touch, rect);
+    touchSideById.delete(id);
+    if (side === 'left') {
+      activeDuckTouches.delete(id);
+      if (activeDuckTouches.size === 0) {
+        inputState.duck = false;
+      }
+    } else if (triggerJump) {
       attemptJump();
     }
-    touchStartY = null;
+  }
+
+  function onTouchStart(ev: TouchEvent) {
+    if (!state.running) return;
+    const rect = canvas.getBoundingClientRect();
+    for (let i = 0; i < ev.changedTouches.length; i += 1) {
+      const touch = ev.changedTouches[i];
+      const side = determineTouchSide(touch, rect);
+      touchSideById.set(touch.identifier, side);
+      if (side === 'left') {
+        activeDuckTouches.add(touch.identifier);
+        inputState.duck = true;
+      }
+    }
+    ev.preventDefault();
+  }
+
+  function onTouchEnd(ev: TouchEvent) {
+    if (!state.running) return;
+    const rect = canvas.getBoundingClientRect();
+    for (let i = 0; i < ev.changedTouches.length; i += 1) {
+      const touch = ev.changedTouches[i];
+      handleTouchRelease(touch, rect, true);
+    }
+    ev.preventDefault();
+  }
+
+  function onTouchCancel(ev: TouchEvent) {
+    if (!state.running) return;
+    const rect = canvas.getBoundingClientRect();
+    for (let i = 0; i < ev.changedTouches.length; i += 1) {
+      const touch = ev.changedTouches[i];
+      handleTouchRelease(touch, rect, false);
+    }
     ev.preventDefault();
   }
 
@@ -567,6 +601,7 @@ export function initGame(): () => void {
   window.addEventListener('keyup', onKeyUp);
   canvas.addEventListener('touchstart', onTouchStart, { passive: false } as AddEventListenerOptions);
   canvas.addEventListener('touchend', onTouchEnd, { passive: false } as AddEventListenerOptions);
+  canvas.addEventListener('touchcancel', onTouchCancel, { passive: false } as AddEventListenerOptions);
 
   function onResize() { canvasSize(); }
   window.addEventListener('resize', onResize);
@@ -618,6 +653,7 @@ export function initGame(): () => void {
     window.removeEventListener('keyup', onKeyUp);
     canvas.removeEventListener('touchstart', onTouchStart as any);
     canvas.removeEventListener('touchend', onTouchEnd as any);
+    canvas.removeEventListener('touchcancel', onTouchCancel as any);
     window.removeEventListener('resize', onResize);
     if ((window as any).visualViewport) {
       (window as any).visualViewport.removeEventListener('resize', onResize);
