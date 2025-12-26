@@ -331,6 +331,12 @@
   const inputState = {
     duck: false,
   };
+  const activeDuckTouches = new Set();
+  const touchSideById = new Map();
+  function determineTouchSide(touch, rect) {
+    const x = touch.clientX - rect.left;
+    return x < rect.width / 2 ? "left" : "right";
+  }
 
   function attemptJump() {
     if (!state.running) return;
@@ -543,28 +549,66 @@
     }
   });
 
-  let touchStartY = null;
-  canvas.addEventListener("touchstart", (event) => {
-    if (!state.running) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    touchStartY = touch.clientY;
-    event.preventDefault();
-  });
-
-  canvas.addEventListener("touchend", (event) => {
-    if (!state.running || touchStartY === null) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-    const deltaY = touchStartY - touch.clientY;
-    if (deltaY < -30) {
-      attemptDuck();
-    } else {
+  function handleTouchRelease(touch, rect, triggerJump) {
+    const id = touch.identifier;
+    const side = touchSideById.get(id) ?? determineTouchSide(touch, rect);
+    touchSideById.delete(id);
+    if (side === "left") {
+      activeDuckTouches.delete(id);
+      if (activeDuckTouches.size === 0) {
+        inputState.duck = false;
+      }
+    } else if (triggerJump) {
       attemptJump();
     }
-    touchStartY = null;
-    event.preventDefault();
-  });
+  }
+
+  canvas.addEventListener(
+    "touchstart",
+    (event) => {
+      if (!state.running) return;
+      const rect = canvas.getBoundingClientRect();
+      for (let i = 0; i < event.changedTouches.length; i += 1) {
+        const touch = event.changedTouches[i];
+        const side = determineTouchSide(touch, rect);
+        touchSideById.set(touch.identifier, side);
+        if (side === "left") {
+          activeDuckTouches.add(touch.identifier);
+          inputState.duck = true;
+        }
+      }
+      event.preventDefault();
+    },
+    { passive: false }
+  );
+
+  canvas.addEventListener(
+    "touchend",
+    (event) => {
+      if (!state.running) return;
+      const rect = canvas.getBoundingClientRect();
+      for (let i = 0; i < event.changedTouches.length; i += 1) {
+        const touch = event.changedTouches[i];
+        handleTouchRelease(touch, rect, true);
+      }
+      event.preventDefault();
+    },
+    { passive: false }
+  );
+
+  canvas.addEventListener(
+    "touchcancel",
+    (event) => {
+      if (!state.running) return;
+      const rect = canvas.getBoundingClientRect();
+      for (let i = 0; i < event.changedTouches.length; i += 1) {
+        const touch = event.changedTouches[i];
+        handleTouchRelease(touch, rect, false);
+      }
+      event.preventDefault();
+    },
+    { passive: false }
+  );
 
   const colorButtons = document.querySelectorAll(".color-btn");
   const updatePauseButtonState = () => {
