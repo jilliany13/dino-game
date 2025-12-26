@@ -383,10 +383,14 @@ export function initGame(): () => void {
 
   function spawnObstacle() {
     const isAir = Math.random() < 0.35;
-    const baseWidth = 24 + Math.random() * 26;
-    const baseHeight = isAir ? 28 : 32;
-    const width = baseWidth + adaptiveSettings.wideBoost * 60;
-    const height = baseHeight + (isAir ? 0 : adaptiveSettings.wideBoost * 12);
+    const airBaseWidth = 18 + Math.random() * 18;
+    const groundBaseWidth = 24 + Math.random() * 26;
+    const airBaseHeight = 40 + Math.random() * 18;
+    const width = isAir
+      ? Math.min(airBaseWidth + adaptiveSettings.wideBoost * 24, 48)
+      : groundBaseWidth + adaptiveSettings.wideBoost * 60;
+    const baseHeight = isAir ? airBaseHeight : 32;
+    const height = baseHeight + (isAir ? adaptiveSettings.wideBoost * 8 : adaptiveSettings.wideBoost * 12);
     const x = VIEW_W + width + Math.random() * 40;
     let y: number;
     if (isAir) {
